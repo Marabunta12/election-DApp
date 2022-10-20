@@ -5,12 +5,12 @@ error Election__NotAdmin();
 error Election__NoRightToVote();
 error Election__AlreadyVoted();
 error Election__InvalidCandidateId();
+error Election__NotInSetupState();
 
 contract Election {
-    /* Type declarations */
     enum ElectionState {
-        REGISTERING_VOTERS_AND_CANDIDATES,
-        VOTING,
+        SETUP,
+        OPEN,
         CLOSED
     }
 
@@ -25,18 +25,16 @@ contract Election {
         uint256 voteCount;
     }
 
-    /* State variables */
+    ElectionState private s_electionState;
     address private immutable i_owner;
     mapping(address => Voter) private s_voters;
     mapping(uint256 => Candidate) private s_candidates;
     uint256 private s_votersCount = 0;
     uint256 private s_candidatesCount = 0;
 
-    /* Events */
     event CandidateAdded(uint256 indexed candidateId);
     event Voted(uint256 candidateId);
 
-    /* Modifiers */
     modifier onlyAdmin() {
         if (msg.sender != i_owner) revert Election__NotAdmin();
         _;
@@ -48,32 +46,50 @@ contract Election {
         _;
     }
 
-    // Functions Order:
-    //// constructor
-    //// receive
-    //// fallback
-    //// external
-    //// public
-    //// internal
-    //// private
-    //// view / pure
+    modifier onlyDuringSetup() {
+        if (s_electionState != ElectionState.SETUP)
+            revert Election__NotInSetupState();
+        _;
+    }
+
+    modifier onlyDuringVoting() {
+        if (s_electionState != ElectionState.OPEN)
+            revert Election__NotInOpenState();
+    }
 
     constructor() {
         i_owner = msg.sender;
+        s_electionState = ElectionState.SETUP;
     }
 
-    function addVoter(address voterAddress) external onlyAdmin {
+    function addVoter(address voterAddress) external onlyAdmin onlyDuringSetup {
         s_voters[voterAddress] = Voter(true, false);
         s_votersCount++;
     }
 
-    function addCandidate(string memory name) external onlyAdmin {
+    function addCandidate(string memory name)
+        external
+        onlyAdmin
+        onlyDuringSetup
+    {
         s_candidatesCount++;
         s_candidates[s_candidatesCount] = Candidate(s_candidatesCount, name, 0);
         emit CandidateAdded(s_candidatesCount);
     }
 
-    function vote(uint256 candidateId) external onlyApprovedVoter {
+    function startElection() external onlyAdmin onlyDuringSetup {
+        s_electionState = ElectionState.OPEN;
+    }
+
+    function endElection() external onlyAdmin onlyDuringVoting {
+        s_electionState = ElectionState.CLOSED;
+    }
+
+    function vote(uint256 candidateId)
+        external
+        onlyApprovedVoter
+        onlyDuringVoting
+    {
         if (s_voters[msg.sender].voted == true) revert Election__AlreadyVoted();
         if (candidateId <= 0 || candidateId > s_candidatesCount)
             revert Election__InvalidCandidateId();
@@ -88,5 +104,9 @@ contract Election {
 
     function getCandidatesCount() external view returns (uint256) {
         return s_candidatesCount;
+    }
+
+    function getElectionState() external view returns (ElectionState) {
+        return s_electionState;
     }
 }
