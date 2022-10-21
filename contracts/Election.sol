@@ -6,6 +6,7 @@ error Election__NoRightToVote();
 error Election__AlreadyVoted();
 error Election__InvalidCandidateId();
 error Election__NotInSetupState();
+error Election__NotInOpenState();
 
 contract Election {
     enum ElectionState {
@@ -55,6 +56,7 @@ contract Election {
     modifier onlyDuringVoting() {
         if (s_electionState != ElectionState.OPEN)
             revert Election__NotInOpenState();
+        _;
     }
 
     constructor() {
@@ -93,7 +95,7 @@ contract Election {
         if (s_voters[msg.sender].voted == true) revert Election__AlreadyVoted();
         if (candidateId <= 0 || candidateId > s_candidatesCount)
             revert Election__InvalidCandidateId();
-        s_voters[msg.sender].voted == true;
+        s_voters[msg.sender].voted = true;
         s_candidates[candidateId].voteCount++;
         emit Voted(candidateId);
     }
@@ -108,5 +110,13 @@ contract Election {
 
     function getElectionState() external view returns (ElectionState) {
         return s_electionState;
+    }
+
+    function getCandidate(uint256 candidateId)
+        external
+        view
+        returns (Candidate memory)
+    {
+        return s_candidates[candidateId];
     }
 }
