@@ -8,6 +8,5 @@ Features ✔
 4. Voters are anonymous, distinguishable by addressses ✔
 5. Only contract owner can register candidates ✔
 6. Result screen display winner, number of votes, attendance
-7.
 
 Registering candidates and voters --> Voting --> Results
