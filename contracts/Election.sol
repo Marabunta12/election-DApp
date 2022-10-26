@@ -123,4 +123,12 @@ contract Election {
     function getAdmin() external view returns (address) {
         return i_owner;
     }
+
+    function getVoter(address voterAddress)
+        external
+        view
+        returns (Voter memory)
+    {
+        return s_voters[voterAddress];
+    }
 }
