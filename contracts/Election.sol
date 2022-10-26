@@ -119,4 +119,8 @@ contract Election {
     {
         return s_candidates[candidateId];
     }
+
+    function getAdmin() external view returns (address) {
+        return i_owner;
+    }
 }
