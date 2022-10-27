@@ -5,7 +5,7 @@ const { developmentChains } = require("../helper-hardhat-config");
 !developmentChains.includes(network.name)
     ? describe.skip
     : describe("Election", function () {
-          let election, deployer, player;
+          let election, deployer, player, candidateName;
           beforeEach(async function () {
               await deployments.fixture(["all"]);
               election = await ethers.getContract("Election");
@@ -51,6 +51,42 @@ const { developmentChains } = require("../helper-hardhat-config");
                   await election.addVoter(player);
                   const votersCount = await election.getVotersCount();
                   assert.equal(votersCount, 1);
+              });
+          });
+          describe("addCandidate", function () {
+              it("reverts if election is not in setup state", async function () {
+                  await election.startElection();
+                  await expect(election.addVoter(player)).to.be.revertedWith(
+                      "Election__NotInSetupState"
+                  );
+                  await election.endElection();
+                  await expect(election.addVoter(player)).to.be.revertedWith(
+                      "Election__NotInSetupState"
+                  );
+              });
+              it("reverts when not admin tries to add voter", async function () {
+                  const playerConnectedElection = await ethers.getContract("Election", player);
+                  await expect(playerConnectedElection.addVoter(player)).to.be.revertedWith(
+                      "Election__NotAdmin"
+                  );
+              });
+              it("adds candidate to candidates mapping correctly", async function () {
+                  candidateName = "Candidate 1";
+                  await election.addCandidate(candidateName);
+                  const { id, name, voteCount } = await election.getCandidate(1);
+                  assert.equal(id, 1);
+                  assert.equal(name, candidateName);
+                  assert.equal(voteCount, 0);
+              });
+              it("updates candidates count", async function () {
+                  candidateName = "Candidate 1";
+                  await election.addCandidate(candidateName);
+                  const candidatesCount = await election.getCandidatesCount();
+                  assert.equal(candidatesCount, 1);
+              });
+              it("emits an event after adding candidate", async function () {
+                  candidateName = "Candidate 1";
+                  expect(await election.addCandidate(candidateName)).to.emit("CandidateAdded");
               });
           });
       });
