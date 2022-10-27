@@ -56,17 +56,17 @@ const { developmentChains } = require("../helper-hardhat-config");
           describe("addCandidate", function () {
               it("reverts if election is not in setup state", async function () {
                   await election.startElection();
-                  await expect(election.addVoter(player)).to.be.revertedWith(
+                  await expect(election.addCandidate(player)).to.be.revertedWith(
                       "Election__NotInSetupState"
                   );
                   await election.endElection();
-                  await expect(election.addVoter(player)).to.be.revertedWith(
+                  await expect(election.addCandidate(player)).to.be.revertedWith(
                       "Election__NotInSetupState"
                   );
               });
-              it("reverts when not admin tries to add voter", async function () {
+              it("reverts when not admin tries to add candidate", async function () {
                   const playerConnectedElection = await ethers.getContract("Election", player);
-                  await expect(playerConnectedElection.addVoter(player)).to.be.revertedWith(
+                  await expect(playerConnectedElection.addCandidate(player)).to.be.revertedWith(
                       "Election__NotAdmin"
                   );
               });
@@ -87,6 +87,53 @@ const { developmentChains } = require("../helper-hardhat-config");
               it("emits an event after adding candidate", async function () {
                   candidateName = "Candidate 1";
                   expect(await election.addCandidate(candidateName)).to.emit("CandidateAdded");
+              });
+          });
+          describe("startElection", function () {
+              it("reverts when not admin tries to start election", async function () {
+                  const playerConnectedElection = await ethers.getContract("Election", player);
+                  await expect(playerConnectedElection.startElection()).to.be.revertedWith(
+                      "Election__NotAdmin"
+                  );
+              });
+              it("reverts if election is not in setup state", async function () {
+                  await election.startElection();
+                  await expect(election.startElection()).to.be.revertedWith(
+                      "Election__NotInSetupState"
+                  );
+                  await election.endElection();
+                  await expect(election.startElection()).to.be.revertedWith(
+                      "Election__NotInSetupState"
+                  );
+              });
+              it("sets election to open state", async function () {
+                  await election.startElection();
+                  const electionState = await election.getElectionState();
+                  assert.equal(electionState, "1");
+              });
+          });
+          describe("endElection", function () {
+              it("reverts when not admin tries to end election", async function () {
+                  const playerConnectedElection = await ethers.getContract("Election", player);
+                  await expect(playerConnectedElection.endElection()).to.be.revertedWith(
+                      "Election__NotAdmin"
+                  );
+              });
+              it("reverts if election is not in open state", async function () {
+                  await expect(election.endElection()).to.be.revertedWith(
+                      "Election__NotInOpenState"
+                  );
+                  await election.startElection();
+                  await election.endElection();
+                  await expect(election.endElection()).to.be.revertedWith(
+                      "Election__NotInOpenState"
+                  );
+              });
+              it("sets election to closed state", async function () {
+                  await election.startElection();
+                  await election.endElection();
+                  const electionState = await election.getElectionState();
+                  assert.equal(electionState, "2");
               });
           });
       });
