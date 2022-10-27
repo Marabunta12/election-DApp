@@ -1,16 +1,19 @@
 const { assert, expect } = require("chai");
 const { network, deployments, ethers, getNamedAccounts } = require("hardhat");
+const { experimentalAddHardhatNetworkMessageTraceHook } = require("hardhat/config");
 const { developmentChains } = require("../helper-hardhat-config");
 
 !developmentChains.includes(network.name)
     ? describe.skip
     : describe("Election", function () {
-          let election, deployer, player, candidateName;
+          let election, deployer, player, candidateName, playerConnectedElection;
           beforeEach(async function () {
               await deployments.fixture(["all"]);
               election = await ethers.getContract("Election");
               deployer = (await getNamedAccounts()).deployer;
               player = (await getNamedAccounts()).player;
+              playerConnectedElection = await ethers.getContract("Election", player);
+              candidateName = "Candidate 1";
           });
 
           describe("constructor", function () {
@@ -36,7 +39,6 @@ const { developmentChains } = require("../helper-hardhat-config");
                   );
               });
               it("reverts when not admin tries to add voter", async function () {
-                  const playerConnectedElection = await ethers.getContract("Election", player);
                   await expect(playerConnectedElection.addVoter(player)).to.be.revertedWith(
                       "Election__NotAdmin"
                   );
@@ -65,13 +67,11 @@ const { developmentChains } = require("../helper-hardhat-config");
                   );
               });
               it("reverts when not admin tries to add candidate", async function () {
-                  const playerConnectedElection = await ethers.getContract("Election", player);
                   await expect(playerConnectedElection.addCandidate(player)).to.be.revertedWith(
                       "Election__NotAdmin"
                   );
               });
               it("adds candidate to candidates mapping correctly", async function () {
-                  candidateName = "Candidate 1";
                   await election.addCandidate(candidateName);
                   const { id, name, voteCount } = await election.getCandidate(1);
                   assert.equal(id, 1);
@@ -79,19 +79,16 @@ const { developmentChains } = require("../helper-hardhat-config");
                   assert.equal(voteCount, 0);
               });
               it("updates candidates count", async function () {
-                  candidateName = "Candidate 1";
                   await election.addCandidate(candidateName);
                   const candidatesCount = await election.getCandidatesCount();
                   assert.equal(candidatesCount, 1);
               });
               it("emits an event after adding candidate", async function () {
-                  candidateName = "Candidate 1";
                   expect(await election.addCandidate(candidateName)).to.emit("CandidateAdded");
               });
           });
           describe("startElection", function () {
               it("reverts when not admin tries to start election", async function () {
-                  const playerConnectedElection = await ethers.getContract("Election", player);
                   await expect(playerConnectedElection.startElection()).to.be.revertedWith(
                       "Election__NotAdmin"
                   );
@@ -114,7 +111,6 @@ const { developmentChains } = require("../helper-hardhat-config");
           });
           describe("endElection", function () {
               it("reverts when not admin tries to end election", async function () {
-                  const playerConnectedElection = await ethers.getContract("Election", player);
                   await expect(playerConnectedElection.endElection()).to.be.revertedWith(
                       "Election__NotAdmin"
                   );
@@ -134,6 +130,71 @@ const { developmentChains } = require("../helper-hardhat-config");
                   await election.endElection();
                   const electionState = await election.getElectionState();
                   assert.equal(electionState, "2");
+              });
+          });
+          describe("vote", async function () {
+              it("reverts if election is not in open state", async function () {
+                  await election.addCandidate(candidateName);
+                  await election.addVoter(player);
+
+                  await expect(playerConnectedElection.vote(1)).to.be.revertedWith(
+                      "Election__NotInOpenState"
+                  );
+                  await election.startElection();
+                  await election.endElection();
+                  await expect(playerConnectedElection.vote(1)).to.be.revertedWith(
+                      "Election__NotInOpenState"
+                  );
+              });
+              it("reverts when not approved voter tries to vote", async function () {
+                  await election.addCandidate(candidateName);
+                  await election.startElection();
+
+                  await expect(playerConnectedElection.vote(1)).to.be.revertedWith(
+                      "Election__NoRightToVote"
+                  );
+              });
+              it("reverts when candidate with chosen id does not exist", async function () {
+                  await election.addCandidate(candidateName);
+                  await election.addVoter(player);
+                  await election.startElection();
+                  await expect(playerConnectedElection.vote(2)).to.be.revertedWith(
+                      "Election__InvalidCandidateId"
+                  );
+                  await expect(playerConnectedElection.vote(0)).to.be.revertedWith(
+                      "Election__InvalidCandidateId"
+                  );
+              });
+              it("updates voter voted field", async function () {
+                  await election.addCandidate(candidateName);
+                  await election.addVoter(player);
+                  await election.startElection();
+                  await playerConnectedElection.vote(1);
+                  const { voted } = await election.getVoter(player);
+                  assert.equal(voted, true);
+              });
+              it("reverts when voter tries to vote twice", async function () {
+                  await election.addCandidate(candidateName);
+                  await election.addVoter(player);
+                  await election.startElection();
+                  await playerConnectedElection.vote(1);
+                  await expect(playerConnectedElection.vote(1)).to.be.revertedWith(
+                      "Election__AlreadyVoted"
+                  );
+              });
+              it("updates candidate vote count", async function () {
+                  await election.addCandidate(candidateName);
+                  await election.addVoter(player);
+                  await election.startElection();
+                  await playerConnectedElection.vote(1);
+                  const { voteCount } = await election.getCandidate(1);
+                  assert.equal(voteCount, 1);
+              });
+              it("emits an event after voting", async function () {
+                  await election.addCandidate(candidateName);
+                  await election.addVoter(player);
+                  await election.startElection();
+                  expect(await playerConnectedElection.vote(1)).to.emit("Voted");
               });
           });
       });
