@@ -33,7 +33,7 @@ contract Election {
     uint256 private s_votersCount = 0;
     uint256 private s_candidatesCount = 0;
 
-    event CandidateAdded(uint256 indexed candidateId);
+    event CandidateAdded(uint256 indexed candidateId, string candidateName);
     event Voted(uint256 candidateId);
 
     modifier onlyAdmin() {
@@ -69,14 +69,12 @@ contract Election {
         s_votersCount++;
     }
 
-    function addCandidate(string memory name)
-        external
-        onlyAdmin
-        onlyDuringSetup
-    {
+    function addCandidate(
+        string memory name
+    ) external onlyAdmin onlyDuringSetup {
         s_candidatesCount++;
         s_candidates[s_candidatesCount] = Candidate(s_candidatesCount, name, 0);
-        emit CandidateAdded(s_candidatesCount);
+        emit CandidateAdded(s_candidatesCount, name);
     }
 
     function startElection() external onlyAdmin onlyDuringSetup {
@@ -87,11 +85,9 @@ contract Election {
         s_electionState = ElectionState.CLOSED;
     }
 
-    function vote(uint256 candidateId)
-        external
-        onlyApprovedVoter
-        onlyDuringVoting
-    {
+    function vote(
+        uint256 candidateId
+    ) external onlyApprovedVoter onlyDuringVoting {
         if (s_voters[msg.sender].voted == true) revert Election__AlreadyVoted();
         if (candidateId <= 0 || candidateId > s_candidatesCount)
             revert Election__InvalidCandidateId();
@@ -112,11 +108,9 @@ contract Election {
         return s_electionState;
     }
 
-    function getCandidate(uint256 candidateId)
-        external
-        view
-        returns (Candidate memory)
-    {
+    function getCandidate(
+        uint256 candidateId
+    ) external view returns (Candidate memory) {
         return s_candidates[candidateId];
     }
 
@@ -124,11 +118,9 @@ contract Election {
         return i_owner;
     }
 
-    function getVoter(address voterAddress)
-        external
-        view
-        returns (Voter memory)
-    {
+    function getVoter(
+        address voterAddress
+    ) external view returns (Voter memory) {
         return s_voters[voterAddress];
     }
 }
