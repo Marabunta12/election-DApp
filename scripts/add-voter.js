@@ -1,6 +1,6 @@
 const { ethers } = require("hardhat");
 
-const VOTER_ADDRESS = "0x70997970c51812dc3a010c7d01b50e0d17dc79c8";
+const VOTER_ADDRESS = "0x69de9AB7a9A14A72cAaA7ca595e584fBD6eb34Ad";
 
 async function addVoter() {
     const election = await ethers.getContract("Election");
