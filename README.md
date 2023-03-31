@@ -21,6 +21,8 @@
 
 ## Requirements
 
+### Before using this app you need to install the following:
+
 * ### Nodejs
 * ### Yarn
 
