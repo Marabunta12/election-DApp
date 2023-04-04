@@ -10,12 +10,10 @@
 
 ## This Dapp goal is to allow some centralized entity to hold en election with easily verifiable results. Thanks to blockchain technology any attems of fraud are impossible.
 
-### [You can see how it works on YouTube](https://www.google.com/)
-
 ## This repository contains only smart contracts code. For front-end and subgraph code see links below
 
-* ### [Election front-end code](https://www.google.com/)
-* ### [Subgraph code](https://www.google.com/)
+* ### [Election front-end code](https://github.com/Marabunta12/election-DApp-frontend)
+* ### [Subgraph code](https://github.com/Marabunta12/election-dapp-graph)
 
 # Getting Started
 
